@@ -1,8 +1,12 @@
 package lk.pathum;
 
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.*;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -18,43 +22,51 @@ public class HTTPClient {
     private static String username;
     private static String serverUrl;
     private static HttpURLConnection con;
+    private static String userAddress;
 
-
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
         Scanner input = new Scanner(System.in);
 
+
+
         while(true){
-            try{
+            try {
                 String command = input.nextLine();
-                if(!isConnected){
+                if (!isConnected) {
                     connectToServer();
-                }else if(command.matches("send .* -> .*") && isConnected) {
+                } else if (command.matches("send .* -> .*") && isConnected) {
                     String[] sub = command.substring(5).split(" -> ");
-                    sendMessage(sub[0],sub[1]);
-                } else if(command.equals("list") && isConnected){
+                    sendMessage(sub[0], sub[1]);
+                } else if (command.equals("list") && isConnected) {
                     listUsers();
                 }
+            } finally {
 
-                messageRequest();
-            } catch (Exception e){
-                e.printStackTrace();
             }
         }
+
     }
 
-    //abc=> [/127.0.0.1:56102 /127.0.0.1:56104]  abcd=> [/127.0.0.1:56106 /127.0.0.1:56108]
+    private static void messageListner() throws IOException {
 
-    private static void messageRequest(){
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("http://"+serverUrl+"/connectToserver"))
-                .POST(HttpRequest.BodyPublishers.ofString(username))
-                .build();
-        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(HttpResponse::body)
-                .thenAccept(System.out::println)
-                .join();
+        int port = Integer.parseInt(userAddress.split(":")[1])+2;
+        HttpServer server = HttpServer.create(new InetSocketAddress(port),0);
+        server.createContext("/new-message").setHandler(HTTPClient::messageRequester);
+        server.start();
+        System.out.println(server.getAddress());
+    }
+
+    private static void messageRequester(HttpExchange exchange) throws IOException {
+            URI requestURI = exchange.getRequestURI();
+            System.out.println(exchange.getRequestBody());
+            String respone = " Hi there user ";
+            exchange.sendResponseHeaders(200, respone.getBytes().length);
+            OutputStream os = exchange.getResponseBody();
+            os.write(respone.getBytes());
+            System.out.println(respone.getBytes().toString());
+            os.close();
+
     }
 
     private static void listUsers(){
@@ -84,7 +96,7 @@ public class HTTPClient {
         }
     }
 
-    private static void connectToServer(){
+    private static void connectToServer() throws IOException {
         Scanner inputS = new Scanner(System.in);
         System.out.println("Type 'connect <host address>:<port> as <username>' ");
         String hostPc = inputS.nextLine();
@@ -99,10 +111,12 @@ public class HTTPClient {
                 .POST(HttpRequest.BodyPublishers.ofString(username))
                 .build();
         client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(HttpResponse::body)
+                .thenApply(response -> { userAddress = response.body(); return response; })
                 .thenAccept(System.out::println)
                 .join();
         isConnected = true;
+        System.out.println("User Address: "+userAddress);
+        if(isConnected) messageListner();
     }
 
     private static void sendMessage(String message,String to){

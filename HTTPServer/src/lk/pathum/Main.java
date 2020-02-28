@@ -55,11 +55,12 @@ public class Main {
         URI requestURI = exchange.getRequestURI();
         users.put(getRequestBody(exchange),exchange.getRemoteAddress());
 
-        String respone = String.valueOf(exchange.getRemoteAddress().getPort());
-        System.out.println(respone);
-        exchange.sendResponseHeaders(200, respone.getBytes().length);
+        String response = String.valueOf(exchange.getRemoteAddress());
+
+        System.out.println(response);
+        exchange.sendResponseHeaders(200, response.getBytes().length);
         OutputStream os = exchange.getResponseBody();
-        os.write(respone.getBytes());
+        os.write(response.getBytes());
 
         os.close();
     }
@@ -67,12 +68,11 @@ public class Main {
     private static void incomingMessages(HttpExchange exchange) throws IOException {
         URI requestURI = exchange.getRequestURI();
         sendMessage(getRequestBody(exchange));
-
         String respone = "Helo";
         exchange.sendResponseHeaders(200, respone.getBytes().length);
         OutputStream os = exchange.getResponseBody();
         os.write(respone.getBytes());
-        System.out.println(respone.getBytes().toString());
+        System.out.println(respone.toString());
         os.close();
     }
 
@@ -107,8 +107,8 @@ public class Main {
     private static boolean sendMessage(String message){
 
         HttpURLConnection con = null;
-        var url = "https:/"+addressForUser(message.split(" ",2)[0]);
-        System.out.println(url);
+        var url = "http:/"+addressForUser(message.split(" ",2)[0])+"/new-message";
+        System.out.println("send message meth"+url);
         var urlParameters = message.split(" ",2)[1];
         byte[] postData = urlParameters.getBytes(StandardCharsets.UTF_8);
         try {
@@ -121,17 +121,17 @@ public class Main {
             try (var wr = new DataOutputStream(con.getOutputStream())) {
                 wr.write(postData);
             }
-            StringBuilder content;
-            try (var br = new BufferedReader(
-                    new InputStreamReader(con.getInputStream()))) {
-                String line;
-                content = new StringBuilder();
-                while ((line = br.readLine()) != null) {
-                    content.append(line);
-                    content.append(System.lineSeparator());
-                }
-            }
-            System.out.println(content.toString());
+//            StringBuilder content;
+//            try (var br = new BufferedReader(
+//                    new InputStreamReader(con.getInputStream()))) {
+//                String line;
+//                content = new StringBuilder();
+//                while ((line = br.readLine()) != null) {
+//                    content.append(line);
+//                    content.append(System.lineSeparator());
+//                }
+//            }
+//            System.out.println(content.toString());
         } catch (ProtocolException e) {
             e.printStackTrace();
         } catch (MalformedURLException e) {
@@ -145,6 +145,6 @@ public class Main {
     }
 
     private static String addressForUser(String user){
-        return users.get(user).getAddress()+":"+users.get(user).getPort();
+        return users.get(user).getAddress()+":"+ String.valueOf(users.get(user).getPort()+2);
     }
 }
