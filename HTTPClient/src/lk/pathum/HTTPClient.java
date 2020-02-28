@@ -19,6 +19,7 @@ import java.util.Scanner;
 public class HTTPClient {
 
     private static boolean isConnected = false;
+    private static boolean firstConnection = false;
     private static String username;
     private static String serverUrl;
     private static HttpURLConnection con;
@@ -35,6 +36,10 @@ public class HTTPClient {
                 String command = input.nextLine();
                 if (!isConnected) {
                     connectToServer();
+                }
+                if(firstConnection){
+                    messageListner();
+                    firstConnection = false;
                 } else if (command.matches("send .* -> .*") && isConnected) {
                     String[] sub = command.substring(5).split(" -> ");
                     sendMessage(sub[0], sub[1]);
@@ -54,17 +59,19 @@ public class HTTPClient {
         HttpServer server = HttpServer.create(new InetSocketAddress(port),0);
         server.createContext("/new-message").setHandler(HTTPClient::messageRequester);
         server.start();
-        System.out.println(server.getAddress());
+        System.out.println("Message Listner: "+server.getAddress());
     }
 
     private static void messageRequester(HttpExchange exchange) throws IOException {
             URI requestURI = exchange.getRequestURI();
+            System.out.println("Message request body "+exchange.getRequestBody().read());
+            String response = " Hi there user ";
+
             System.out.println(exchange.getRequestBody());
-            String respone = " Hi there user ";
-            exchange.sendResponseHeaders(200, respone.getBytes().length);
+            exchange.sendResponseHeaders(200, response.getBytes().length);
             OutputStream os = exchange.getResponseBody();
-            os.write(respone.getBytes());
-            System.out.println(respone.getBytes().toString());
+            os.write(response.getBytes());
+            System.out.println(response.getBytes().toString());
             os.close();
 
     }
@@ -115,8 +122,9 @@ public class HTTPClient {
                 .thenAccept(System.out::println)
                 .join();
         isConnected = true;
+        firstConnection = true;
         System.out.println("User Address: "+userAddress);
-        if(isConnected) messageListner();
+
     }
 
     private static void sendMessage(String message,String to){
